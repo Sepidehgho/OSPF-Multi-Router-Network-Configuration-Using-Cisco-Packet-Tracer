@@ -1,0 +1,1007 @@
+# OSPF Multi-Router Network Configuration Using Cisco Packet Tracer
+
+## 1. Project Overview
+
+This project demonstrates the design, configuration, and verification of a multi-router network using **Open Shortest Path First (OSPF)** in Cisco Packet Tracer.
+
+The network consists of four interconnected routers (R1, R2, R3, and R4) configured with multiple interface types, including GigabitEthernet, FastEthernet, and Serial connections.
+
+The project focuses on implementing dynamic routing with OSPF Area 0, configuring Layer 2 switchports using VLAN interfaces, assigning unique OSPF Router IDs, advertising a Loopback network, and verifying routing connectivity between all routers.
+
+### Project Objectives
+
+- Design a four-router network topology.
+- Configure IPv4 addresses on router interfaces.
+- Configure GigabitEthernet and Serial interfaces.
+- Configure FastEthernet switchports using VLANs.
+- Implement single-area OSPF routing.
+- Assign unique OSPF Router IDs.
+- Configure and advertise a Loopback network.
+- Understand OSPF Administrative Distance and Cost.
+- Verify OSPF neighbor relationships.
+- Examine OSPF-learned routes in the routing table.
+- Test network connectivity using ICMP Ping.
+- Troubleshoot interface and routing problems.
+
+## 2. Network Topology
+
+The topology consists of four routers connected in a redundant network.
+
+![OSPF Network Topology](images/ospf-topology.png)
+
+*Figure 1: Four-router OSPF topology created in Cisco Packet Tracer.*
+
+### Network Structure
+
+```text
+                     R2
+                   /    \
+        10.10.12.0/24   10.10.24.0/24
+                 /        \
+                R1--------R4
+                 \ Serial /|
+                  \      / | Loopback0
+                   \    /  | 192.168.1.1/24
+                    R3     |
+```
+
+The logical connections are:
+
+| Connection | Network | Interface Types |
+|---|---|---|
+| R1 ↔ R2 | 10.10.12.0/24 | FastEthernet |
+| R1 ↔ R3 | 10.10.13.0/24 | GigabitEthernet |
+| R1 ↔ R4 | 10.10.14.0/24 | Serial |
+| R2 ↔ R4 | 10.10.24.0/24 | FastEthernet |
+| R3 ↔ R4 | 10.10.34.0/24 | GigabitEthernet |
+| R4 Loopback | 192.168.1.0/24 | Loopback0 |
+
+All four routers participate in OSPF Area 0.
+
+The redundant connections allow OSPF to calculate alternative paths between routers.
+
+## 3. IP Addressing Table
+
+### Router R1
+
+| Interface | IP Address | Subnet Mask | Connected To |
+|---|---|---|---|
+| FastEthernet0/3/0 | VLAN 12 | — | R2 |
+| VLAN12 | 10.10.12.1 | 255.255.255.0 | R2 |
+| GigabitEthernet0/0 | 10.10.13.1 | 255.255.255.0 | R3 |
+| Serial0/2/0 | 10.10.14.1 | 255.255.255.0 | R4 |
+
+### Router R2
+
+| Interface | IP Address | Subnet Mask | Connected To |
+|---|---|---|---|
+| FastEthernet0/2/0 | VLAN 12 | — | R1 |
+| VLAN12 | 10.10.12.2 | 255.255.255.0 | R1 |
+| FastEthernet0/2/1 | VLAN 24 | — | R4 |
+| VLAN24 | 10.10.24.2 | 255.255.255.0 | R4 |
+
+### Router R3
+
+| Interface | IP Address | Subnet Mask | Connected To |
+|---|---|---|---|
+| GigabitEthernet0/0 | 10.10.13.2 | 255.255.255.0 | R1 |
+| GigabitEthernet0/1 | 10.10.34.2 | 255.255.255.0 | R4 |
+
+### Router R4
+
+| Interface | IP Address | Subnet Mask | Connected To |
+|---|---|---|---|
+| FastEthernet0/2/0 | VLAN 24 | — | R2 |
+| VLAN24 | 10.10.24.1 | 255.255.255.0 | R2 |
+| GigabitEthernet0/0 | 10.10.34.1 | 255.255.255.0 | R3 |
+| Serial0/3/0 | 10.10.14.2 | 255.255.255.0 | R1 |
+| Loopback0 | 192.168.1.1 | 255.255.255.0 | Virtual Interface |
+
+All networks use a `/24` subnet mask.
+
+## 4. Router Configuration
+
+The following commands configure the interfaces and OSPF routing on each router.
+
+The FastEthernet modules used in this topology operate as Layer 2 switchports. Therefore, IP addresses are assigned to VLAN interfaces instead of directly to the physical FastEthernet ports.
+
+### 4.1 Router R1 Configuration
+
+```cisco
+enable
+configure terminal
+
+hostname R1
+
+! VLAN 12
+interface vlan 12
+ ip address 10.10.12.1 255.255.255.0
+ no shutdown
+exit
+
+! FastEthernet connection to R2
+interface fastEthernet 0/3/0
+ switchport mode access
+ switchport access vlan 12
+ no shutdown
+exit
+
+! GigabitEthernet connection to R3
+interface gigabitEthernet 0/0
+ ip address 10.10.13.1 255.255.255.0
+ no shutdown
+exit
+
+! Serial connection to R4
+interface serial 0/2/0
+ ip address 10.10.14.1 255.255.255.0
+ no shutdown
+exit
+
+! OSPF Configuration
+router ospf 1
+ router-id 1.1.1.1
+ network 10.10.12.0 0.0.0.255 area 0
+ network 10.10.13.0 0.0.0.255 area 0
+ network 10.10.14.0 0.0.0.255 area 0
+exit
+
+end
+copy running-config startup-config
+```
+
+### 4.2 Router R2 Configuration
+
+R2 uses FastEthernet switchports belonging to two separate VLANs.
+
+VLAN 12 is used for the connection to R1, while VLAN 24 is used for the connection to R4.
+
+```cisco
+enable
+configure terminal
+
+hostname R2
+
+! VLAN 12
+interface vlan 12
+ ip address 10.10.12.2 255.255.255.0
+ no shutdown
+exit
+
+! FastEthernet connection to R1
+interface fastEthernet 0/2/0
+ switchport mode access
+ switchport access vlan 12
+ no shutdown
+exit
+
+! VLAN 24
+interface vlan 24
+ ip address 10.10.24.2 255.255.255.0
+ no shutdown
+exit
+
+! FastEthernet connection to R4
+interface fastEthernet 0/2/1
+ switchport mode access
+ switchport access vlan 24
+ no shutdown
+exit
+
+! OSPF Configuration
+router ospf 1
+ router-id 2.2.2.2
+ network 10.10.12.0 0.0.0.255 area 0
+ network 10.10.24.0 0.0.0.255 area 0
+exit
+
+end
+copy running-config startup-config
+```
+
+### 4.3 Router R3 Configuration
+
+R3 uses two GigabitEthernet interfaces to connect to R1 and R4.
+
+```cisco
+enable
+configure terminal
+
+hostname R3
+
+! Connection to R1
+interface gigabitEthernet 0/0
+ ip address 10.10.13.2 255.255.255.0
+ no shutdown
+exit
+
+! Connection to R4
+interface gigabitEthernet 0/1
+ ip address 10.10.34.2 255.255.255.0
+ no shutdown
+exit
+
+! OSPF Configuration
+router ospf 1
+ router-id 3.3.3.3
+ network 10.10.13.0 0.0.0.255 area 0
+ network 10.10.34.0 0.0.0.255 area 0
+exit
+
+end
+copy running-config startup-config
+```
+
+### 4.4 Router R4 Configuration
+
+R4 is connected to the other three routers and contains the Loopback network used in this project.
+
+```cisco
+enable
+configure terminal
+
+hostname R4
+
+! VLAN 24
+interface vlan 24
+ ip address 10.10.24.1 255.255.255.0
+ no shutdown
+exit
+
+! FastEthernet connection to R2
+interface fastEthernet 0/2/0
+ switchport mode access
+ switchport access vlan 24
+ no shutdown
+exit
+
+! GigabitEthernet connection to R3
+interface gigabitEthernet 0/0
+ ip address 10.10.34.1 255.255.255.0
+ no shutdown
+exit
+
+! Serial connection to R1
+interface serial 0/3/0
+ ip address 10.10.14.2 255.255.255.0
+ no shutdown
+exit
+
+! Loopback Interface
+interface loopback 0
+ ip address 192.168.1.1 255.255.255.0
+ ip ospf network point-to-point
+exit
+
+! OSPF Configuration
+router ospf 1
+ router-id 4.4.4.4
+ network 10.10.14.0 0.0.0.255 area 0
+ network 10.10.24.0 0.0.0.255 area 0
+ network 10.10.34.0 0.0.0.255 area 0
+ network 192.168.1.0 0.0.0.255 area 0
+exit
+
+end
+copy running-config startup-config
+```
+
+**Note:** On the Serial interface connected to a DCE cable, clocking may need to be configured using `clock rate 64000`. The command should only be applied on the DCE side if required.
+
+## 5. Understanding VLAN Configuration
+
+During the configuration process, an important difference between routed Ethernet interfaces and switchports was observed.
+
+When attempting to assign an IP address directly to a FastEthernet switchport, the router rejected the command.
+
+Example:
+
+```cisco
+interface fastEthernet 0/3/0
+ip address 10.10.12.1 255.255.255.0
+```
+
+The router returned an invalid input error.
+
+### Why did this happen?
+
+The FastEthernet interfaces belong to an Ethernet switching module.
+
+These interfaces operate at Layer 2 of the OSI model and do not support direct routed IP configuration in this setup.
+
+Instead, a Switch Virtual Interface (SVI) must be configured.
+
+Example:
+
+```cisco
+interface vlan 12
+ ip address 10.10.12.1 255.255.255.0
+ no shutdown
+exit
+
+interface fastEthernet 0/3/0
+ switchport mode access
+ switchport access vlan 12
+ no shutdown
+```
+
+The physical FastEthernet interface operates as a switchport, while VLAN12 provides the Layer 3 interface.
+
+### Important Concepts
+
+| Concept | Description |
+|---|---|
+| Switchport | Layer 2 interface |
+| VLAN | Logical segmentation of a network |
+| SVI | Layer 3 virtual interface associated with a VLAN |
+| Access Port | Switchport assigned to one VLAN |
+| Routed Port | Layer 3 interface that can receive an IP address directly |
+
+The VLAN number does not need to match the IP subnet number.
+
+For example, VLAN 20 could also use the subnet `10.10.12.0/24`.
+
+However, the access port must belong to the correct VLAN.
+
+## 6. OSPF Routing Configuration
+
+OSPF is a dynamic routing protocol based on the Link-State routing algorithm.
+
+Unlike static routing, OSPF allows routers to exchange routing information and calculate paths dynamically.
+
+### OSPF Characteristics
+
+| Property | Value |
+|---|---|
+| Routing Protocol | OSPF |
+| Protocol Type | Link-State |
+| Algorithm | Dijkstra SPF |
+| Administrative Distance | 110 |
+| Metric | Cost |
+| OSPF Area | Area 0 |
+| OSPF Process ID | 1 |
+| Routing Domain | Single-Area OSPF |
+
+### OSPF Network Statements
+
+Example from R1:
+
+```cisco
+router ospf 1
+ network 10.10.12.0 0.0.0.255 area 0
+ network 10.10.13.0 0.0.0.255 area 0
+ network 10.10.14.0 0.0.0.255 area 0
+```
+
+Explanation:
+
+- `router ospf 1` enables OSPF process 1.
+- `network` selects interfaces matching the specified IP range.
+- `0.0.0.255` is the wildcard mask corresponding to `/24`.
+- `area 0` assigns the selected interfaces to OSPF Area 0.
+
+The Process ID is locally significant and does not need to be the same on every router, although this project uses process 1 consistently.
+
+## 7. Configuring OSPF Router IDs
+
+Each OSPF router requires a unique Router ID.
+
+Router IDs are written in IPv4 address format but function as identifiers rather than necessarily being assigned interface IP addresses.
+
+The following Router IDs were selected:
+
+| Router | Router ID |
+|---|---|
+| R1 | 1.1.1.1 |
+| R2 | 2.2.2.2 |
+| R3 | 3.3.3.3 |
+| R4 | 4.4.4.4 |
+
+Example configuration:
+
+```cisco
+configure terminal
+router ospf 1
+ router-id 1.1.1.1
+end
+```
+
+If OSPF was already running, restart its process to apply the new Router ID:
+
+```cisco
+clear ip ospf process
+```
+
+Confirm the reset with `yes` when prompted.
+
+**Important:** Restarting the OSPF process temporarily interrupts OSPF neighbor relationships while adjacencies are re-established.
+
+### Verification
+
+```cisco
+show ip ospf
+```
+
+Example expected output on R1:
+
+```text
+Routing Process "ospf 1" with ID 1.1.1.1
+```
+
+## 8. Loopback Interface Configuration
+
+A Loopback interface was configured on Router R4 to simulate an additional network.
+
+### Loopback Configuration
+
+| Property | Value |
+|---|---|
+| Router | R4 |
+| Interface | Loopback0 |
+| IP Address | 192.168.1.1 |
+| Subnet Mask | 255.255.255.0 |
+| Network | 192.168.1.0/24 |
+| OSPF Area | 0 |
+
+Configuration:
+
+```cisco
+configure terminal
+
+interface loopback 0
+ ip address 192.168.1.1 255.255.255.0
+ ip ospf network point-to-point
+exit
+
+router ospf 1
+ network 192.168.1.0 0.0.0.255 area 0
+end
+```
+
+### Why Use a Loopback Interface?
+
+Loopback interfaces are virtual interfaces that do not depend on a physical cable.
+
+They are commonly used for:
+
+- Testing routing connectivity.
+- Router management addresses.
+- Stable logical endpoints.
+- Routing protocol identification.
+- Simulating additional reachable networks.
+
+### OSPF Loopback /32 vs /24 Behavior
+
+An important issue encountered during this project was that OSPF initially advertised the Loopback interface as a host route.
+
+Example:
+
+```text
+O 192.168.1.1/32
+```
+
+This is the default OSPF behavior for Loopback interfaces in Cisco IOS.
+
+However, the objective was to advertise the entire network:
+
+```text
+192.168.1.0/24
+```
+
+The solution was:
+
+```cisco
+interface loopback 0
+ ip ospf network point-to-point
+```
+
+After applying this configuration, OSPF advertised the Loopback using its configured `/24` subnet mask.
+
+### Important Lesson: Duplicate Loopback Networks
+
+During troubleshooting, the same Loopback network was also present on R1.
+
+As a result, R1 treated `192.168.1.0/24` as a directly connected network instead of installing it as an OSPF-learned route.
+
+The duplicate Loopback interface on R1 was removed:
+
+```cisco
+configure terminal
+no interface loopback 0
+end
+```
+
+After this correction, R1 successfully learned the Loopback network from R4 through OSPF.
+
+This demonstrates why overlapping or duplicate connected subnets should be avoided on separate routers in this topology.
+
+## 9. OSPF Neighbor Verification
+
+OSPF routers must establish neighbor relationships before exchanging routing information.
+
+The following command was used:
+
+```cisco
+show ip ospf neighbor
+```
+
+### Observed Neighbor Relationships on R4
+
+```text
+Neighbor ID     State       Address       Interface
+
+10.10.14.1      FULL/-      10.10.14.1    Serial0/3/0
+10.10.24.2      FULL/DR     10.10.24.2    Vlan24
+10.10.34.2      FULL/DR     10.10.34.2    GigabitEthernet0/0
+```
+
+*These values were observed during the lab before the final manually assigned Router IDs were verified.*
+
+After manually assigning Router IDs and restarting OSPF, the Neighbor ID column should show the configured identifiers of the neighboring routers.
+
+### Explanation of Neighbor States
+
+| State | Meaning |
+|---|---|
+| DOWN | No recent OSPF Hello packets received |
+| INIT | Hello packets received |
+| 2-WAY | Bidirectional communication established |
+| EXSTART | Database exchange negotiation begins |
+| EXCHANGE | Routers exchange database descriptions |
+| LOADING | Missing link-state information is requested |
+| FULL | OSPF adjacency established |
+
+A `FULL` state indicates that the routers have completed the adjacency process.
+
+For broadcast networks, the output can also show DR and BDR relationships.
+
+## 10. OSPF Routing Table Verification
+
+To display OSPF-learned routes:
+
+```cisco
+show ip route ospf
+```
+
+### Observed Routing Table on R1
+
+```text
+O 10.10.24.0 [110/65] via 10.10.14.2, Serial0/2/0
+
+O 10.10.34.0 [110/65] via 10.10.14.2, Serial0/2/0
+
+O 192.168.1.0 [110/65] via 10.10.14.2, Serial0/2/0
+```
+
+These entries demonstrate that R1 successfully learned remote networks through OSPF.
+
+### Understanding Routing Table Entries
+
+Example:
+
+```text
+O 192.168.1.0 [110/65] via 10.10.14.2
+```
+
+| Field | Meaning |
+|---|---|
+| O | Route learned through OSPF |
+| 192.168.1.0 | Destination network |
+| 110 | Administrative Distance |
+| 65 | OSPF Cost |
+| 10.10.14.2 | Next-hop IP address |
+| Serial0/2/0 | Outgoing interface |
+
+### Administrative Distance
+
+Administrative Distance (AD) represents the preference of different route sources.
+
+Lower values are preferred when comparing routes to the same destination prefix from different routing sources.
+
+| Route Source | AD |
+|---|---|
+| Connected | 0 |
+| Static | 1 |
+| EIGRP Internal | 90 |
+| OSPF | 110 |
+| RIP | 120 |
+
+### Understanding OSPF Cost
+
+OSPF uses Cost to select the lowest-cost path to a destination.
+
+A common Cisco reference bandwidth calculation is:
+
+```text
+Cost = Reference Bandwidth / Interface Bandwidth
+```
+
+With the traditional default reference bandwidth of 100 Mbps:
+
+- FastEthernet 100 Mbps: Cost 1
+- GigabitEthernet 1000 Mbps: Cost 1 (minimum cost)
+- Serial 1.544 Mbps: approximately Cost 64
+
+For example, a path using a Serial link with Cost 64 and an additional OSPF interface cost of 1 can produce:
+
+```text
+64 + 1 = 65
+```
+
+Actual OSPF costs depend on interface bandwidth, reference bandwidth, and any manually configured cost values.
+
+The configured Router ID does not determine OSPF Cost.
+
+## 11. Network Connectivity Testing
+
+Ping was used to verify communication between directly connected and remote networks.
+
+### Test 1: R1 to R2
+
+Run on R1:
+
+```cisco
+ping 10.10.12.2
+```
+
+Tests connectivity over VLAN12.
+
+### Test 2: R1 to R3
+
+```cisco
+ping 10.10.13.2
+```
+
+Tests the GigabitEthernet connection.
+
+### Test 3: R1 to R4
+
+```cisco
+ping 10.10.14.2
+```
+
+Tests the Serial connection.
+
+### Test 4: R2 to R4
+
+```cisco
+ping 10.10.24.1
+```
+
+Tests connectivity through VLAN24.
+
+### Test 5: R3 to R4
+
+```cisco
+ping 10.10.34.1
+```
+
+Tests the GigabitEthernet connection.
+
+### Test 6: Remote Loopback Reachability
+
+Run on R1, R2, and R3:
+
+```cisco
+ping 192.168.1.1
+```
+
+The objective is to confirm that all three routers can reach the Loopback interface on R4.
+
+Expected successful Ping output:
+
+```text
+!!!!!
+Success rate is 100 percent (5/5)
+```
+
+The first attempt can occasionally time out while ARP resolution or other initial network processes complete.
+
+The full set of remote Loopback Ping results should be verified in Packet Tracer.
+
+## 12. Troubleshooting
+
+Several networking problems were investigated during this project.
+
+### Problem 1: IP Address Rejected on FastEthernet
+
+**Symptom**
+
+```text
+% Invalid input detected at '^' marker.
+```
+
+**Cause**
+
+The FastEthernet interface was a Layer 2 switchport.
+
+**Solution**
+
+Configure an SVI and assign the physical switchport to the corresponding VLAN.
+
+```cisco
+interface vlan 12
+ ip address 10.10.12.1 255.255.255.0
+ no shutdown
+```
+
+Then:
+
+```cisco
+interface fastEthernet 0/3/0
+ switchport mode access
+ switchport access vlan 12
+ no shutdown
+```
+
+### Problem 2: Interface Status Down
+
+Check interface status:
+
+```cisco
+show ip interface brief
+```
+
+Common status values:
+
+| Status | Meaning |
+|---|---|
+| up/up | Interface and line protocol operational |
+| administratively down/down | Interface disabled by configuration |
+| down/down | Physical link or other lower-layer problem |
+| up/down | Physical interface up, line protocol not operational |
+
+Possible troubleshooting actions:
+
+```cisco
+configure terminal
+interface gigabitEthernet 0/0
+no shutdown
+end
+```
+
+Also verify the remote interface, cable connections, and correct IP addressing.
+
+### Problem 3: Serial Interface Not Working
+
+Check Serial interface status:
+
+```cisco
+show interfaces serial 0/3/0
+```
+
+Identify the DCE side:
+
+```cisco
+show controllers serial 0/3/0
+```
+
+If the interface is the DCE side and clocking is required:
+
+```cisco
+configure terminal
+interface serial 0/3/0
+clock rate 64000
+no shutdown
+end
+```
+
+The red cable color displayed in Cisco Packet Tracer can simply represent a Serial cable type.
+
+The status indicators and CLI output should be used to determine actual link status.
+
+### Problem 4: OSPF Neighbors Not Established
+
+Check:
+
+```cisco
+show ip ospf neighbor
+```
+
+Possible causes include:
+
+- Interfaces are down.
+- Incorrect IP addressing.
+- Incorrect OSPF Area assignments.
+- OSPF is not enabled on an interface.
+- Incompatible OSPF Hello/Dead timers.
+- Duplicate Router IDs.
+- Network type or authentication mismatches.
+
+Useful commands:
+
+```cisco
+show ip ospf interface brief
+show ip ospf neighbor
+show ip protocols
+```
+
+### Problem 5: Loopback Advertised as /32
+
+**Problem**
+
+The Loopback was advertised as:
+
+```text
+192.168.1.1/32
+```
+
+**Solution**
+
+```cisco
+interface loopback 0
+ip ospf network point-to-point
+```
+
+This allowed OSPF to advertise the configured `/24` network.
+
+### Problem 6: Loopback Network Missing from OSPF Routes
+
+The Loopback network was originally configured on more than one router.
+
+As a result, a connected route prevented the corresponding learned OSPF route from being installed in the routing table.
+
+**Solution**
+
+Keep the `192.168.1.0/24` Loopback network on R4 only.
+
+Remove the unintended duplicate from R1:
+
+```cisco
+configure terminal
+no interface loopback 0
+end
+```
+
+Then check:
+
+```cisco
+show ip route ospf
+```
+
+### Problem 7: OSPF Router ID Did Not Change
+
+When a new Router ID is configured after OSPF has already started, the active Router ID may not immediately change.
+
+**Solution**
+
+```cisco
+clear ip ospf process
+```
+
+Confirm with:
+
+```cisco
+show ip ospf
+```
+
+## 13. Useful Cisco Verification Commands
+
+| Command | Purpose |
+|---|---|
+| `show ip interface brief` | Displays interface IPs and operational states |
+| `show interfaces` | Displays detailed interface information |
+| `show ip route` | Displays the complete IPv4 routing table |
+| `show ip route ospf` | Displays OSPF-learned routes |
+| `show ip ospf` | Displays OSPF process information and Router ID |
+| `show ip ospf neighbor` | Displays OSPF neighbor relationships |
+| `show ip ospf interface brief` | Displays OSPF-enabled interfaces |
+| `show ip protocols` | Displays active routing protocol information |
+| `show running-config` | Displays current device configuration |
+| `ping` | Tests IP connectivity |
+| `traceroute` | Displays the routed path to a destination |
+| `copy running-config startup-config` | Saves configuration |
+
+## 14. Project Verification Summary
+
+The following results were observed during configuration and testing:
+
+| Verification | Result |
+|---|---|
+| R1–R2 FastEthernet connectivity | Successful Ping |
+| VLAN12 configuration | Operational |
+| R2 VLAN24 configuration | Operational |
+| Router interface addressing | Configured |
+| R4 OSPF neighbor adjacencies | Three FULL adjacencies observed |
+| OSPF dynamic route learning | Confirmed |
+| R4 Loopback configuration | Confirmed |
+| Loopback /24 advertisement | Confirmed on R1 after correction |
+| OSPF path cost inspection | Completed |
+| Unique Router ID assignment | Configuration commands prepared; final IDs require verification |
+| Remote Loopback Ping on all routers | Final verification recommended |
+
+The routing table on R1 confirmed that the remote Loopback network was learned via OSPF:
+
+```text
+O 192.168.1.0 [110/65] via 10.10.14.2
+```
+
+This demonstrates successful advertisement of the remote Loopback network.
+
+## 15. Key Learning Outcomes
+
+Through this project, the following concepts were practiced:
+
+**1. IPv4 Interface Configuration**
+
+Assigning IP addresses and subnet masks to physical and virtual router interfaces.
+
+**2. Layer 2 vs Layer 3 Interfaces**
+
+Understanding why switchports require VLAN-based Layer 3 interfaces rather than direct IP configuration.
+
+**3. VLAN Configuration**
+
+Creating VLAN interfaces and assigning access ports to different broadcast domains.
+
+**4. OSPF Dynamic Routing**
+
+Configuring OSPF Area 0 and enabling routing information exchange across multiple routers.
+
+**5. OSPF Router IDs**
+
+Assigning unique identifiers to OSPF routers and understanding their role in routing protocol operation.
+
+**6. OSPF Neighbor Relationships**
+
+Using OSPF neighbor states to verify successful adjacency formation.
+
+**7. OSPF Cost and Administrative Distance**
+
+Understanding how routers prefer routing sources and calculate the lowest-cost OSPF paths.
+
+**8. Loopback Advertisement**
+
+Configuring a Loopback interface and advertising it as a complete `/24` subnet rather than a `/32` host route.
+
+**9. Routing Troubleshooting**
+
+Using Cisco IOS commands to identify and resolve interface, addressing, and routing problems.
+
+## 16. Tools and Technologies
+
+- Cisco Packet Tracer
+- Cisco IOS CLI
+- IPv4 Addressing
+- OSPFv2
+- VLANs
+- Switch Virtual Interfaces (SVIs)
+- GigabitEthernet
+- FastEthernet
+- Serial WAN Interfaces
+- Loopback Interfaces
+- ICMP Ping
+- Routing Table Analysis
+
+## 17. Repository Structure
+
+Suggested GitHub repository structure:
+
+```text
+OSPF-Multi-Router-Lab/
+│
+├── README.md
+│
+├── ospfscenario.pkt
+│
+└── images/
+    └── ospf-topology.png
+```
+
+The `.pkt` file contains the Cisco Packet Tracer network topology and its configurations.
+
+The `images` directory contains screenshots of the completed topology.
+
+## 18. Conclusion
+
+This project demonstrates the implementation of a single-area OSPF network using four Cisco routers interconnected through GigabitEthernet, FastEthernet, and Serial interfaces.
+
+The lab combines Layer 2 VLAN configuration with Layer 3 routing and demonstrates how OSPF discovers neighbors, learns remote networks, and selects paths based on routing cost.
+
+One of the key technical challenges was the advertisement of a Loopback interface as a `/24` network instead of the default `/32` host route. This was resolved using the OSPF point-to-point network type on the Loopback interface.
+
+The lab also illustrates the importance of correct IP addressing, unique OSPF Router IDs, VLAN-to-interface mapping, and systematic troubleshooting.
+
+Overall, the project provides hands-on experience with fundamental routing and switching concepts used in enterprise IP networks.
+
+
